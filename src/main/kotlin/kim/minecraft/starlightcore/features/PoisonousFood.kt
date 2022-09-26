@@ -1,11 +1,6 @@
 package kim.minecraft.starlightcore.features
 
-import io.izzel.taboolib.module.nms.nbt.NBTBase
-import io.izzel.taboolib.module.nms.nbt.NBTCompound
 import kim.minecraft.starlightcore.StarLightCore
-import kim.minecraft.starlightcore.StarLightCore.getConfig
-import kim.minecraft.starlightcore.StarLightCore.getLocale
-import kim.minecraft.starlightcore.utils.ItemInteraction
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
@@ -18,14 +13,20 @@ import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.ShapelessRecipe
+import taboolib.common.platform.function.submit
+import taboolib.module.nms.ItemTag
+import taboolib.module.nms.ItemTagData
+import taboolib.module.nms.getItemTag
+import taboolib.platform.util.asLangText
+import taboolib.platform.util.onlinePlayers
 import java.util.*
 import kotlin.random.Random
 
 object PoisonousFood : Listener {
 
-    private val minDeathTime = getConfig().getLong("Features.PoisonousFood.MinDeathTime", 600)
-    private val maxDeathTime = getConfig().getLong("Features.PoisonousFood.MaxDeathTime", 24000)
-    private val intervalTicks: Long = getConfig().getLong("Features.PoisonousFood.IntervalTicks", 100)
+    private val minDeathTime = StarLightCore.config.getLong("Features.PoisonousFood.MinDeathTime", 600)
+    private val maxDeathTime = StarLightCore.config.getLong("Features.PoisonousFood.MaxDeathTime", 24000)
+    private val intervalTicks: Long = StarLightCore.config.getLong("Features.PoisonousFood.IntervalTicks", 100)
 
     init {
         Material.values().filter { it.isEdible }.forEach { material ->
@@ -37,29 +38,27 @@ object PoisonousFood : Listener {
                     .addIngredient(Material.SPIDER_EYE)
                     .also { shapelessRecipe -> Bukkit.addRecipe(shapelessRecipe) }
         }
-        Bukkit.getScheduler().runTaskTimer(StarLightCore.plugin, Runnable {
-            Bukkit.getOnlinePlayers().forEach {
-                checkDeath(it)
-            }
-        }, 20, intervalTicks)
+        submit(delay = 20, period = intervalTicks) {
+            onlinePlayers.forEach { checkDeath(it) }
+        }
     }
 
     private fun ItemStack.addPoison() {
-        ItemInteraction.getNBTCompound(this).also {
+        getItemTag().also {
             if (it.getDeep("StarLightCore.PoisonousFood") == null)
-                it.putDeep("StarLightCore.PoisonousFood", NBTCompound())
+                it.putDeep("StarLightCore.PoisonousFood", ItemTag())
             it.saveTo(this)
         }
     }
 
     @EventHandler
     fun onRecipe(e: CraftItemEvent) {
-        ItemInteraction.getNBTCompound(e.currentItem!!).also {
+        e.currentItem!!.getItemTag().also {
             if (it.getDeep("StarLightCore.PoisonousFood.Killer") != null) return
             if (it.getDeep("StarLightCore.PoisonousFood") != null)
-                it.putDeep("StarLightCore.PoisonousFood", NBTCompound().apply {
-                    this["TimeFor"] = NBTBase(Random.nextLong(minDeathTime, maxDeathTime))
-                    this["Killer"] = NBTBase(e.whoClicked.uniqueId.toString())
+                it.putDeep("StarLightCore.PoisonousFood", ItemTag().apply {
+                    this["TimeFor"] = ItemTagData(Random.nextLong(minDeathTime, maxDeathTime))
+                    this["Killer"] = ItemTagData(e.whoClicked.uniqueId.toString())
                 })
             it.saveTo(e.currentItem!!)
         }
@@ -68,7 +67,7 @@ object PoisonousFood : Listener {
     @EventHandler
     fun onEat(e: PlayerItemConsumeEvent) {
         if (!e.item.type.isEdible) return
-        val nbt = ItemInteraction.getNBTCompound(e.item)
+        val nbt = e.item.getItemTag()
         if (nbt.getDeep("StarLightCore.PoisonousFood.TimeFor") == null) return
         if (e.player.scoreboardTags.any { it.startsWith("StarLightCore.PoisonousFood.TimeOn") }) return
         e.player.addScoreboardTag("StarLightCore.PoisonousFood.TimeOn:${Bukkit.getWorlds()[0].fullTime + nbt.getDeep("StarLightCore.PoisonousFood.TimeFor").asLong()}")
@@ -83,7 +82,7 @@ object PoisonousFood : Listener {
     @EventHandler
     fun onDeath(e: PlayerDeathEvent) {
         if (!e.entity.scoreboardTags.stream().anyMatch { it.startsWith("StarLightCore.PoisonousFood.TimeOn") }) return
-        e.deathMessage = getLocale("Features.PoisonousFood.DeathMessage").replace("{0}", e.entity.displayName).replace("{1}", Bukkit.getOfflinePlayer(UUID.fromString(e.entity.scoreboardTags.find { it.startsWith("StarLightCore.PoisonousFood.Killer") }!!.split(':')[1])).name!!)
+        e.deathMessage = e.entity.asLangText("Features-PoisonousFood-DeathMessage", e.entity.displayName, Bukkit.getOfflinePlayer(UUID.fromString(e.entity.scoreboardTags.find { it.startsWith("StarLightCore.PoisonousFood.Killer") }!!.split(':')[1])).name!!)
         e.entity.removeScoreboardTag(e.entity.scoreboardTags.find { it.startsWith("StarLightCore.PoisonousFood.TimeOn") }!!)
         e.entity.removeScoreboardTag(e.entity.scoreboardTags.find { it.startsWith("StarLightCore.PoisonousFood.Killer") }!!)
     }
@@ -94,5 +93,4 @@ object PoisonousFood : Listener {
                         .split(':')[1]
                         .toLong() <= Bukkit.getWorlds()[0].fullTime) player.health = 0.0
     }
-
 }

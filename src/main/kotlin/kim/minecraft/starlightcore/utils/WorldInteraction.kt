@@ -20,7 +20,7 @@ object WorldInteraction {
 
         val blockList = highestBlock.location.get3DBlocksAround(maxDistanceBetweenLogAndLeaves)
         if (!blockList.stream().anyMatch { Tag.LOGS.isTagged(it.type) }) return false
-        if (blockList.filter { Tag.LEAVES.isTagged(it.type) }.count() < treeLeavesNumberAtLeast) return false
+        if (blockList.count { Tag.LEAVES.isTagged(it.type) } < treeLeavesNumberAtLeast) return false
 
         val log = blockList.find { Tag.LOGS.isTagged(it.type) }!!
         if (!log.location.getYBlocks(treeLogUpTo, treeLogDownTo).all { Tag.LEAVES.isTagged(it.type) || it.type == log.type }) return false
@@ -28,8 +28,7 @@ object WorldInteraction {
         return true
     }
 
-
-    fun Location.get3DBlocksAround(radius: Int): List<Block> {
+    private fun Location.get3DBlocksAround(radius: Int): List<Block> {
         val blockList = mutableListOf<Block>()
         val max = clone().add(radius.toDouble(), radius.toDouble(), radius.toDouble())
         val min = clone().subtract(radius.toDouble(), radius.toDouble(), radius.toDouble())
@@ -45,7 +44,7 @@ object WorldInteraction {
         return blockList
     }
 
-    fun Location.getYBlocks(up: Int, down: Int): List<Block> {
+    private fun Location.getYBlocks(up: Int, down: Int): List<Block> {
         val blockList = mutableListOf<Block>()
         for (loop_y in (-down)..up) {
             val block = clone().add(0.0, loop_y.toDouble(), 0.0).block

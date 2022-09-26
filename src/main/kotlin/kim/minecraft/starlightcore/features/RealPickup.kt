@@ -7,6 +7,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityPickupItemEvent
 
 object RealPickup : Listener {
+
     @EventHandler
     fun onPickupItem(e: EntityPickupItemEvent) {
         if (e.entityType != EntityType.PLAYER) return

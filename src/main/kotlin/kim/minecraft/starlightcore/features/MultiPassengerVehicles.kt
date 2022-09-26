@@ -1,17 +1,17 @@
 package kim.minecraft.starlightcore.features
 
-import kim.minecraft.starlightcore.StarLightCore.getConfig
-import kim.minecraft.starlightcore.StarLightCore.getLocale
+import kim.minecraft.starlightcore.StarLightCore
 import org.bukkit.entity.Entity
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerToggleSneakEvent
 import org.bukkit.event.vehicle.VehicleExitEvent
+import taboolib.platform.util.sendLang
 
 object MultiPassengerVehicles : Listener {
 
-    private val maxPlayer = getConfig().getInt("Features.MultiPassengerVehicles.MaxPlayer", 20)
+    private val maxPlayer = StarLightCore.config.getInt("Features.MultiPassengerVehicles.MaxPlayer", 20)
 
     @EventHandler
     fun joinVehicle(e: PlayerInteractEntityEvent) {
@@ -27,7 +27,7 @@ object MultiPassengerVehicles : Listener {
                         if (player <= maxPlayer)
                             it.addPassenger(e.player)
                         else
-                         e.player.sendMessage(getLocale("Features.MultiPassengerVehicles.Full"))
+                         e.player.sendLang("Features-MultiPassengerVehicles-Full")
                     } else
                         player++
                 }
